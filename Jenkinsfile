@@ -1,35 +1,44 @@
-node {
-    def pythonImage = 'python:3-alpine'
-
-    stage('Checkout') {
-        checkout scm
-    }
-
-    stage('Build') {
-        dir('sources') {
-            docker.image(pythonImage).inside {
-                sh 'whoami' // Tambahkan baris ini
-                sh 'pip install pyinstaller'
-                sh 'pyinstaller --onefile add2vals.py'
+pipeline {
+    agent none
+    stages {
+        stage('Build') {
+            agent {
+                docker {
+                    image 'python:2-alpine'
+                }
+            }
+            steps {
+                sh 'python -m py_compile sources/add2vals.py sources/calc.py'
             }
         }
-    }
-
-
-    stage('Test') {
-        dir('sources') {
-            docker.image(pythonImage).inside {
-                sh 'pip install qnib/pytest'
-                sh 'py.test --verbose --junit-xml ../test-reports/results.xml test_calc.py'
+        stage('Test') {
+            agent {
+                docker {
+                    image 'qnib/pytest'
+                }
+            }
+            steps {
+                sh 'py.test --verbose --junit-xml test-reports/results.xml sources/test_calc.py'
+            }
+            post {
+                always {
+                    junit 'test-reports/results.xml'
+                }
             }
         }
-        junit 'test-reports/results.xml'
-    }
-
-    stage('Deliver') {
-        dir('sources') {
-            docker.image(pythonImage).inside {
-                archiveArtifacts allowEmptyArchive: true, artifacts: '../dist/*'
+        stage('Deliver') {
+            agent {
+                docker {
+                    image 'cdrx/pyinstaller-linux:python2'
+                }
+            }
+            steps {
+                sh 'pyinstaller --onefile sources/add2vals.py'
+            }
+            post {
+                success {
+                    archiveArtifacts 'dist/add2vals'
+                }
             }
         }
     }
