@@ -8,11 +8,13 @@ node {
     stage('Build') {
         dir('sources') {
             docker.image(pythonImage).inside {
+                sh 'whoami' // Tambahkan baris ini
                 sh 'pip install pyinstaller'
                 sh 'pyinstaller --onefile add2vals.py'
             }
         }
     }
+
 
     stage('Test') {
         dir('sources') {
